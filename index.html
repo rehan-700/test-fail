@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Codexx</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-zinc-950 text-zinc-100 overflow-hidden font-sans h-[100dvh] w-full">
+
+  <!-- APP WRAPPER: Hidden completely until user is logged in -->
+  <div id="app-wrapper" style="display: none;" class="w-full h-full flex flex-col">
+
+    <!-- Mobile Top Bar -->
+    <div class="md:hidden shrink-0 fixed top-0 left-0 right-0 h-14 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 z-50">
+      <button onclick="toggleSidebar()" class="text-3xl text-white">
+        <i class="fas fa-bars"></i>
+      </button>
+      <div class="flex-1 flex justify-center items-center gap-2">
+        <div class="w-8 h-8 bg-gradient-to-br from-violet-600 to-fuchsia-500 rounded-2xl flex items-center justify-center text-xl font-bold">C</div>
+        <span class="text-2xl font-semibold tracking-tighter">Codexx</span>
+      </div>
+      <button onclick="logout()" class="text-2xl text-zinc-400 hover:text-white">
+        <i class="fas fa-sign-out-alt"></i>
+      </button>
+    </div>
+
+    <div class="flex flex-1 min-h-0 md:pt-0 pt-14">
+
+      <!-- Sidebar -->
+      <div id="sidebar" class="w-72 bg-zinc-900 border-r border-zinc-800 flex flex-col fixed md:static inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition-transform duration-300 z-50 overflow-hidden">
+        
+        <!-- User Profile display area -->
+        <div class="p-6 flex items-center gap-3 border-b border-zinc-800">
+          <div id="user-initial" class="shrink-0 w-10 h-10 bg-gradient-to-br from-violet-600 to-fuchsia-500 rounded-2xl flex items-center justify-center text-xl font-bold uppercase shadow-lg">U</div>
+          <div class="flex flex-col overflow-hidden">
+            <span class="text-lg font-semibold tracking-tight">Codexx</span>
+            <span id="user-email" class="text-xs text-zinc-400 truncate w-full">Loading...</span>
+          </div>
+        </div>
+
+        <button onclick="newChat()" class="mx-4 mt-6 flex items-center justify-center gap-3 bg-white hover:bg-zinc-100 text-zinc-900 font-semibold py-3.5 rounded-3xl transition text-base">
+          <i class="fas fa-plus"></i> New Chat
+        </button>
+
+        <div class="mt-8 px-4 flex-1 overflow-y-auto" id="history-list"></div>
+
+        <div class="p-4 border-t border-zinc-800 space-y-1">
+          <button onclick="showSettings()" class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800 rounded-2xl text-sm font-medium">
+            <i class="fas fa-cog"></i> Settings
+          </button>
+          <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800 rounded-2xl text-sm font-medium text-red-400">
+            <i class="fas fa-sign-out-alt"></i> Logout
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile Overlay -->
+      <div id="overlay" onclick="toggleSidebar()" class="hidden md:hidden fixed inset-0 bg-black/70 z-40"></div>
+
+      <!-- Main Area -->
+      <div class="flex-1 flex flex-col min-w-0 min-h-0">
+        
+        <!-- Desktop Tabs -->
+        <div class="hidden md:flex h-14 border-b border-zinc-800 bg-zinc-900 items-center px-6 gap-8 shrink-0">
+          <button onclick="switchTab(0)" id="tab-0" class="tab active">Chat</button>
+          <button onclick="switchTab(1)" id="tab-1" class="tab">Preview</button>
+          <button onclick="switchTab(2)" id="tab-2" class="tab">Code</button>
+        </div>
+
+        <!-- Chat Panel -->
+        <div id="panel-0" class="flex-1 flex flex-col min-h-0">
+          <div id="messages" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-8"></div>
+          
+          <div class="shrink-0 p-4 md:p-6 border-t border-zinc-800 bg-zinc-900" style="padding-bottom: max(1rem, env(safe-area-inset-bottom));">
+            <div class="max-w-3xl mx-auto relative">
+              <textarea id="user-input" rows="1" class="w-full bg-zinc-800 border border-zinc-700 rounded-3xl px-5 py-4 pr-16 focus:outline-none focus:border-violet-500 resize-none text-base max-h-32 overflow-y-auto" placeholder="Describe the website you want..."></textarea>
+              <button id="send-btn" onclick="sendMessage()" class="absolute right-3 bottom-3 w-10 h-10 bg-violet-600 hover:bg-violet-500 rounded-2xl flex items-center justify-center transition-colors">
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div id="panel-1" class="flex-1 hidden flex-col min-h-0">
+          <iframe id="preview-iframe" class="flex-1 w-full h-full border-0 bg-white"></iframe>
+        </div>
+
+        <!-- Code Panel -->
+        <div id="panel-2" class="flex-1 hidden flex-col bg-zinc-950 min-h-0">
+          <div class="flex justify-end p-4 border-b border-zinc-800 gap-3 shrink-0">
+            <button onclick="copyCode()" class="flex items-center gap-2 px-5 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm">
+              <i class="fas fa-copy"></i> Copy
+            </button>
+            <button onclick="downloadCode()" class="flex items-center gap-2 px-5 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm">
+              <i class="fas fa-download"></i> Download
+            </button>
+          </div>
+          <pre id="code-block" class="flex-1 overflow-auto p-4 md:p-6 text-sm m-0"><code id="code-content" class="language-html"></code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGIN MODAL -->
+  <div id="login-modal" class="fixed inset-0 bg-black/90 hidden flex flex-col items-center justify-center z-[100]">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-md p-8 mx-4 shadow-2xl">
+      <h2 class="text-3xl font-bold mb-2 text-center text-white">Codexx</h2>
+      <p class="text-zinc-400 text-center mb-8">Sign in to start building</p>
+      
+      <!-- Error Message Box -->
+      <div id="auth-error" class="hidden text-red-400 text-sm text-center font-medium bg-red-500/10 py-3 rounded-xl border border-red-500/20 mb-5"></div>
+
+      <div class="space-y-4">
+        <input id="email" type="email" placeholder="Email address" class="w-full bg-zinc-800/50 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-violet-500 transition-colors">
+        <input id="password" type="password" placeholder="Password" class="w-full bg-zinc-800/50 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-violet-500 transition-colors">
+        
+        <button id="btn-login" onclick="loginEmail()" class="w-full bg-white text-zinc-900 hover:bg-zinc-200 font-semibold py-4 rounded-3xl transition-colors">Sign in</button>
+        <button id="btn-signup" onclick="signUpEmail()" class="w-full border border-zinc-700 text-white hover:bg-zinc-800 py-4 rounded-3xl transition-colors">Create account</button>
+        
+        <div class="flex items-center gap-3 my-2">
+          <hr class="flex-1 border-zinc-800"><span class="text-zinc-500 text-sm">or</span><hr class="flex-1 border-zinc-800">
+        </div>
+
+        <button id="btn-google" onclick="googleSignIn()" class="w-full flex items-center justify-center gap-3 bg-[#4285F4] hover:bg-[#3367D6] text-white py-4 rounded-3xl transition-colors font-medium">
+          <i class="fab fa-google"></i> Continue with Google
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div id="settings-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-[100]">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-md p-8 mx-4">
+      <h2 class="text-2xl font-semibold mb-6">Settings</h2>
+      <div class="space-y-6">
+        <div>
+          <label class="text-sm text-zinc-400 block mb-2">AI Model</label>
+          <select id="model-select" class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4">
+            <option value="meta-llama/llama-3.3-70b-instruct:free">Balanced (Llama 3.3 70B)</option>
+            <option value="qwen/qwen3-coder:free">Coding Expert (Qwen 3 Coder)</option>
+            <option value="deepseek/deepseek-r1-0528:free">Smart Reasoning (DeepSeek R1)</option>
+            <option value="openai/gpt-oss-120b:free">Powerful AI (GPT OSS 120B)</option>
+            <option value="nvidia/nemotron-3-nano-30b-a3b:free">Fast Mode (Nemotron Nano)</option>
+          </select>
+        </div>
+        <!-- I Added a close button here so the user can close the settings panel -->
+        <button onclick="closeSettings()" class="w-full bg-white text-zinc-900 hover:bg-zinc-200 font-semibold py-4 rounded-3xl transition-colors">Save & Close</button>
+      </div>
+    </div> <!-- Added missing closing tags -->
+  </div> <!-- Added missing closing tags -->
+
+  <!-- Script is now properly placed outside of the unclosed DIV tags -->
+  <script src="app.js"></script>
+</body>
+</html>
